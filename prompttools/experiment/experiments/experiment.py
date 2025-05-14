@@ -13,7 +13,6 @@ import logging
 from IPython import display
 from tabulate import tabulate
 import pandas as pd
-import sentry_sdk
 import os
 
 try:
@@ -53,11 +52,6 @@ class Experiment:
         self.audio_experiment = False
         self._experiment_id = None
         self._revision_id = None
-        try:
-            if "SENTRY_OPT_OUT" not in os.environ:
-                sentry_sdk.capture_message(f"Initializing {self.__class__.__name__}", "info")
-        except Exception:
-            pass
         # self.feedback_widget_provider = FeedbackWidgetProvider(
         #     self.completion_fn, self._aggregate_metric, self._get_human_eval_listener
         # )
