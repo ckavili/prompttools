@@ -29,6 +29,9 @@ from prompttools.playground.data_loader import render_prompts, load_data, run_mu
 params = st.experimental_get_query_params()
 st.experimental_set_query_params()
 
+# Add "Custom OpenAI" to MODEL_TYPES
+MODEL_TYPES = MODEL_TYPES + ("Custom OpenAI Chat",)
+
 st.header("PromptTools Playground")
 st.write("Give us a \U00002B50 on [GitHub](https://github.com/hegelai/prompttools)")
 
@@ -40,7 +43,7 @@ with st.sidebar:
         if "model_type" not in st.session_state and "model_type" in params:
             st.session_state.model_type = unquote(params["model_type"][0])
         model_type = st.selectbox("Model Type", MODEL_TYPES, key="model_type")
-        model, api_key = None, None
+        model, api_key, base_url = None, None, None
         if "model" not in st.session_state and "model" in params:
             st.session_state.model = unquote(params["model"][0])
         if model_type in {"LlamaCpp Chat", "LlamaCpp Completion"}:
@@ -62,6 +65,10 @@ with st.sidebar:
         elif model_type == "OpenAI Completion":
             model = st.selectbox("Model", OPENAI_COMPLETION_MODELS, key="model")
             api_key = st.text_input("OpenAI API Key", type="password")
+        elif model_type == "Custom OpenAI Chat":
+            model = st.text_input("Model Name", key="model")
+            base_url = st.text_input("Base URL (e.g. https://api.example.com/v1)", key="base_url")
+            api_key = st.text_input("API Key", type="password")
         elif model_type == "Replicate":
             model = st.text_input("Model", key="model")
             api_key = st.text_input("Replicate API Key", type="password")
@@ -72,7 +79,7 @@ with st.sidebar:
             prompt_count = st.number_input("Add User Input", step=1, min_value=1, max_value=10)
             variable_count = len(params["var_names"][0].split(",")) if "var_names" in params else 1
             variable_count = st.number_input("Add Variable", step=1, min_value=1, max_value=10, value=variable_count)
-        elif model_type == "OpenAI Chat":
+        elif model_type in ["OpenAI Chat", "Custom OpenAI Chat"]:
             instruction_count = st.number_input("Add System Message", step=1, min_value=1, max_value=5)
             prompt_count = st.number_input("Add User Message", step=1, min_value=1, max_value=10)
         else:
@@ -101,7 +108,7 @@ with st.sidebar:
         max_tokens = None
         presence_penalty = None
         frequency_penalty = None
-        if model_type == "OpenAI Chat" or model_type == "OpenAI Completion":
+        if model_type in ["OpenAI Chat", "OpenAI Completion", "Custom OpenAI Chat"]:
             # top_p = st.slider("Top P", min_value=0.0, max_value=1.0, value=1.0, step=0.01, key="top_p")
             # max_tokens = st.number_input("Max Tokens", min_value=0, value=, step=1, key="max_tokens")
             presence_penalty = st.slider(
@@ -138,7 +145,7 @@ if mode == "Instruction":
         with cols[j]:
             instructions.append(
                 st.text_area(
-                    "System Message" if model_type == "OpenAI Chat" else "Instruction",
+                    "System Message" if model_type in ["OpenAI Chat", "Custom OpenAI Chat"] else "Instruction",
                     key=f"instruction_{j-1}",
                 )
             )
@@ -151,7 +158,7 @@ if mode == "Instruction":
         with cols[0]:
             prompts.append(
                 st.text_area(
-                    "User Message" if model_type == "OpenAI Chat" else "Prompt",
+                    "User Message" if model_type in ["OpenAI Chat", "Custom OpenAI Chat"] else "Prompt",
                     key=f"prompt_{i}",
                 )
             )
@@ -189,6 +196,7 @@ if mode == "Instruction":
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
             api_key=api_key,
+            base_url=base_url,
         )
         st.session_state.df = df
         for i in range(len(prompts)):
@@ -207,7 +215,7 @@ elif mode == "Prompt Template":
             key="instruction",
             value=params["instruction"][0] if "instruction" in params else "You are a helpful AI assistant.",
         )
-    elif model_type == "OpenAI Chat":
+    elif model_type in ["OpenAI Chat", "Custom OpenAI Chat"]:
         instruction = st.text_area(
             "System Message",
             key="instruction",
@@ -270,7 +278,7 @@ elif mode == "Prompt Template":
 
     if run:
         prompts = render_prompts(templates, vars)
-        df = load_data(model_type, model, [instruction], prompts, temperature, api_key=api_key)
+        df = load_data(model_type, model, [instruction], prompts, temperature, api_key=api_key, base_url=base_url)
         st.session_state.prompts = prompts
         st.session_state.df = df
         for i in range(len(vars)):
@@ -291,6 +299,7 @@ elif mode == "Model Comparison":
         a = None
     models = []
     model_types = []
+    base_urls = {}
     instructions = {}
     for j in range(1, model_count + 1):
         with cols[j]:
@@ -300,6 +309,7 @@ elif mode == "Model Comparison":
                     (
                         "OpenAI Chat",
                         "OpenAI Completion",
+                        "Custom OpenAI Chat",
                         "Anthropic",
                         "Google PaLM",
                         "LlamaCpp Chat",
@@ -325,6 +335,12 @@ elif mode == "Model Comparison":
                 instructions[j] = st.text_area("Instruction", key=f"instruction_{j}")
             elif model_types[j - 1] == "Anthropic":
                 models.append(st.selectbox("Model", ("claude-2", "claude-instant-1"), key=f"anthropic_{j}"))
+            elif model_types[j - 1] == "Custom OpenAI Chat":
+                models.append(st.text_input("Model Name", key=f"model_{j}"))
+                base_urls[j] = st.text_input("Base URL", key=f"base_url_{j}")
+                instructions[j] = st.text_area(
+                    "System Message", value="You are a helpful AI assistant.", key=f"instruction_{j}"
+                )
             elif model_types[j - 1] == "OpenAI Chat":
                 models.append(
                     st.selectbox(
@@ -372,7 +388,8 @@ elif mode == "Model Comparison":
 
     if run:
         dfs = run_multiple(
-            model_types, models, instructions, prompts, openai_api_key, anthropic_api_key, google_api_key, hf_api_key, replicate_api_key
+            model_types, models, instructions, prompts, openai_api_key, anthropic_api_key, 
+            google_api_key, hf_api_key, replicate_api_key, base_urls=base_urls
         )
         st.session_state.dfs = dfs
         for i in range(len(prompts)):

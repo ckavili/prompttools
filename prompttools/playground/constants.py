@@ -16,6 +16,7 @@ from prompttools.experiment import ReplicateExperiment
 ENVIRONMENT_VARIABLE = {
     "Replicate": "REPLICATE_API_TOKEN",
     "OpenAI Chat": "OPENAI_API_KEY",
+    "Custom OpenAI Chat": "OPENAI_API_KEY",
     "OpenAI Completion": "OPENAI_API_KEY",
     "Anthropic": "ANTHROPIC_API_KEY",
     "Google PaLM": "GOOGLE_PALM_API_KEY",
@@ -25,6 +26,7 @@ ENVIRONMENT_VARIABLE = {
 EXPERIMENTS = {
     "LlamaCpp Chat": LlamaCppExperiment,
     "OpenAI Chat": OpenAIChatExperiment,
+    "Custom OpenAI Chat": OpenAIChatExperiment,
     "OpenAI Completion": OpenAICompletionExperiment,
     "Anthropic": AnthropicCompletionExperiment,
     "Google PaLM": GooglePaLMCompletionExperiment,
@@ -36,7 +38,8 @@ MODES = ("Instruction", "Prompt Template", "Model Comparison")
 
 MODEL_TYPES = (
     "OpenAI Chat",
-    "OpenAI Completion",
+    "Custom OpenAI Chat",
+    "OpenAI Completion", 
     "Anthropic",
     "Google PaLM",
     "LlamaCpp Chat",
