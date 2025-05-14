@@ -121,8 +121,16 @@ class OpenAIChatExperiment(Experiment):
         functions: Optional[List[Dict]] = [None],
         function_call: Optional[List[Dict[str, str]]] = [None],
         azure_openai_service_configs: Optional[dict] = None,
+        base_url: Optional[List[str]] = None,
     ):
-        if azure_openai_service_configs is None:
+        if base_url:
+            client = openai.OpenAI(
+                api_key=os.getenv("OPENAI_API_KEY"),
+                base_url=base_url,
+            )
+            print("CLIENT: ", client)
+            self.completion_fn = client.chat.completions.create
+        elif azure_openai_service_configs is None:
             self.completion_fn = openai.chat.completions.create
         else:
             client = openai.AzureOpenAI(

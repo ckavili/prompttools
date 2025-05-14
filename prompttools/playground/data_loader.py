@@ -39,6 +39,8 @@ def load_data(
 ):
     if api_key:
         os.environ[ENVIRONMENT_VARIABLE.get(model_type, "OPENAI_API_KEY")] = api_key
+
+    from prompttools.selector.prompt_selector import PromptSelector
     
     selectors = [PromptSelector(instruction, user_input) for instruction in instructions for user_input in user_inputs]
 
@@ -59,7 +61,7 @@ def load_data(
     elif model_type == "Custom OpenAI Chat":
         # For Custom OpenAI Chat, we'll need to create a custom experiment
         # This will use the OpenAIChatExperiment with a custom base_url
-        from prompttools.experiment.openai.openai_chat_experiment import OpenAIChatExperiment
+        from prompttools.experiment import OpenAIChatExperiment
         from prompttools.selector.prompt_selector import PromptSelector
         
         # Create selectors from instructions and user inputs
@@ -73,14 +75,15 @@ def load_data(
         
         # Create experiment with custom base_url
         experiment = OpenAIChatExperiment(
-            model_names=[model],
+            model=[model],
             messages=messages,
             temperature=[temperature],
-            top_p=[top_p] if top_p is not None else None,
-            max_tokens=[max_tokens] if max_tokens is not None else None,
-            frequency_penalty=[frequency_penalty] if frequency_penalty is not None else None,
-            presence_penalty=[presence_penalty] if presence_penalty is not None else None,
+            top_p=[top_p],
+            max_tokens=[max_tokens],
+            frequency_penalty=[frequency_penalty],
+            presence_penalty=[presence_penalty],
             base_url=base_url,
+            stream=[False],
         )
         experiment.run()
     elif model_type == "HuggingFace Hub":
